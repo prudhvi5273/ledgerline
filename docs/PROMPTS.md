@@ -38,4 +38,4 @@ This log records every significant AI interaction, critical technical evaluation
   - Documented threat model and mitigations in `docs/THREATS.md`.
   - Configured project `.gitignore` and `.env.example`.
 
-- **Git Commit Reference:** Initial Architecture & Documentation Commit (Pending first commit).
+- **Git Commit Reference:** [`58be310`](https://github.com/prudhvi/ledgerline/commit/58be310) – `feat(arch): initial project architecture, database schema, threats model, and prompt audit log`
