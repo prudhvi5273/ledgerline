@@ -39,3 +39,35 @@ This log records every significant AI interaction, critical technical evaluation
   - Configured project `.gitignore` and `.env.example`.
 
 - **Git Commit Reference:** [`58be310`](https://github.com/prudhvi/ledgerline/commit/58be310) – `feat(arch): initial project architecture, database schema, threats model, and prompt audit log`
+
+---
+
+### Entry 2: Session 2 – Backend, Double-Entry Transfer Engine & Idempotency
+
+- **Date & Time:** 2026-11-06 16:45 IST
+- **Prompt Given to AI:**
+  "Start the project" (Proceed with Second Session – Backend: complete authentication, database, accounts, transaction logic, and test suites).
+
+- **What the AI Generated:**
+  - Complete SQLAlchemy 2.0 asynchronous models (`User`, `Account`, `LedgerTransaction`, `LedgerEntry`, `IdempotencyRecord`, `AuditLog`).
+  - Alembic migration `0001_initial_schema.py` including check constraints and the PostgreSQL immutability trigger preventing `UPDATE`/`DELETE` on `ledger_entries`.
+  - Two-Phase Idempotency service with deterministic SHA-256 request payload hashing and concurrent in-flight conflict detection (HTTP 409).
+  - Double-Entry `TransferEngine` enforcing deterministic ascending row lock ordering (`SELECT ... FOR UPDATE ORDER BY id ASC`) to eradicate deadlocks.
+  - Role-based FastAPI routers for Authentication (JWT/Bcrypt), Accounts, Money Movement (Deposit, Withdraw, Transfer), Statements, Admin, and Auditor.
+  - Pytest automated test suite covering Money Conservation, Insufficient Balance Rejection, Idempotency Caching, Conflict Handling, Unauthorized Access Rejection, Auditor Read-Only Enforcement, and Statement Running Balance Accuracy.
+
+- **What Was Technically Incomplete or Suboptimal (Identified During Review):**
+  1. *Audit Rollback Problem:* When a financial transaction is aborted (e.g., due to insufficient funds), calling `session.rollback()` inside standard exception handlers also cancels any audit log entries queued in that session. Refused transaction attempts would vanish from the audit trail.
+  2. *Self-Transfer Edge Case:* A user submitting a transfer where `source_account_id == destination_account_id` would attempt to lock the same row twice or create zero-sum redundant lines.
+  3. *Audit Log Router Separation:* Auditing endpoints needed distinct RBAC filters for Administrator versus Auditor roles rather than a single generic router.
+
+- **How the Issue Was Investigated & Corrected:**
+  1. *Isolated Audit Sessions:* Created `AuditService.log_refusal_isolated()` which spins up a standalone database session to persist security events and refusal reasons (e.g. `INSUFFICIENT_FUNDS`, `UNAUTHORIZED_ACCOUNT_ACCESS`) completely decoupled from the aborted financial session.
+  2. *Pydantic Pre-Validation:* Added a `model_validator` in `TransferRequest` rejecting identical source and destination accounts before reaching the database lock manager.
+  3. *Role-Segregated Audit Endpoints:* Built `/api/v1/admin/audit-logs` guarded by `require_role(["ADMIN"])` and `/api/v1/auditor/audit-logs` guarded by `require_role(["AUDITOR", "ADMIN"])`.
+
+- **Changes Applied:**
+  - Implemented in `backend/app/` across `core/`, `models/`, `schemas/`, `services/`, and `api/v1/`.
+  - Added tests in `backend/tests/` and container configuration in `backend/Dockerfile` and `docker-compose.yml`.
+
+- **Git Commit Reference:** `feat(backend): complete double-entry transfer engine, auth RBAC, idempotency, and tests` (Pending commit).
