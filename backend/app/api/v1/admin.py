@@ -16,6 +16,41 @@ from app.services.audit_service import AuditService
 router = APIRouter(prefix="/admin", tags=["Admin Portal"])
 
 
+@router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def provision_privileged_user(
+    payload: UserRegister,
+    admin_user: User = Depends(require_role(["ADMIN"])),
+    db: AsyncSession = Depends(get_db)
+):
+    """Admin-only: Provision a new user with any authorized role (ADMIN, AUDITOR, ACCOUNT_HOLDER)."""
+    stmt = select(User).where(User.email == payload.email.lower())
+    existing = (await db.execute(stmt)).scalar_one_or_none()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exists.")
+
+    from app.core.security import get_password_hash
+    user = User(
+        email=payload.email.lower(),
+        password_hash=get_password_hash(payload.password),
+        full_name=payload.full_name,
+        role=payload.role or "ACCOUNT_HOLDER",
+        is_active=True
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+    await AuditService.log_event(
+        db=db,
+        actor_id=admin_user.id,
+        event_type="USER_PROVISIONED_BY_ADMIN",
+        status="SUCCESS",
+        metadata_info={"email": user.email, "assigned_role": user.role}
+    )
+    await db.commit()
+    return user
+
+
 @router.get("/users", response_model=List[UserResponse])
 async def list_all_users(
     admin_user: User = Depends(require_role(["ADMIN"])),

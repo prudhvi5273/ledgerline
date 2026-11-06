@@ -40,11 +40,13 @@ async def register_user(
 
     # Hash password securely
     hashed_password = get_password_hash(payload.password)
+    # SECURITY FIX: Public registration strictly forces role to ACCOUNT_HOLDER
+    # Privileged roles (ADMIN, AUDITOR) can only be provisioned by existing administrators
     user = User(
         email=payload.email.lower(),
         password_hash=hashed_password,
         full_name=payload.full_name,
-        role=payload.role or "ACCOUNT_HOLDER",
+        role="ACCOUNT_HOLDER",
         is_active=True
     )
     db.add(user)

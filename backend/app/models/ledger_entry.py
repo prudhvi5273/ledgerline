@@ -1,7 +1,7 @@
 import uuid
 from decimal import Decimal
 from datetime import datetime, timezone
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, String
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, event
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
@@ -60,3 +60,10 @@ class LedgerEntry(Base):
     # Relationships
     transaction = relationship("LedgerTransaction", back_populates="entries")
     account = relationship("Account", back_populates="ledger_entries")
+
+
+# Application-level immutability guard
+@event.listens_for(LedgerEntry, "before_update")
+@event.listens_for(LedgerEntry, "before_delete")
+def enforce_ledger_entry_immutability(mapper, connection, target):
+    raise PermissionError("Financial ledger entries are strictly immutable. UPDATE and DELETE operations are forbidden.")

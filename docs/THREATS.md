@@ -43,32 +43,41 @@ This document provides a threat model for LedgerLine, analyzing 15 distinct fina
 - **Remaining Risk:** High contention under hot accounts; requests wait in lock queue. Mitigated by fail-fast lock timeouts (`NOWAIT` or `lock_timeout`).
 
 ### 3. Duplicate Transfer Requests
-- **Attack Scenario:** A user initiates a ₹5,000 transfer. The request experiences network latency. The user clicks "Submit" three times or the client network stack automatically retries.
-- **Damage Potential:** ₹15,000 is transferred instead of ₹5,000.
-- **Prevention Mechanism:** The client attaches an `Idempotency-Key: <UUID>` header. The server creates an atomic `idempotency_records` row with status `PENDING`. Subsequent requests detect the key: if completed, they return the cached 201 response body; if in-flight, they return `409 Conflict`.
-- **Verifying Test:** `test_duplicate_request_same_key`.
-- **Remaining Risk:** Storage bloat of idempotency records over time. Mitigated by a scheduled retention policy (e.g., purge keys older than 30 days).
+- **Attack Scenario:** A user initiates a ₹5,000 transfer. The request experiences network latency. The user clicks "Submit" three times or the client network stack automatically retries. Additionally, two concurrent requests arrive at the exact same millisecond before either record is committed.
+- **Damage Potential:** ₹15,000 is transferred instead of ₹5,000, or a database 500 error occurs due to unique primary key violation on `idempotency_records`.
+- **Prevention Mechanism:**
+  1. Two-Phase Idempotency with atomic key check and SHA-256 payload verification.
+  2. The financial transfer and the idempotency completion status (`status = 'COMPLETED'`) are committed together in the **exact same database transaction**.
+  3. Race condition handling: If two identical requests hit the database simultaneously, the database unique constraint raises an `IntegrityError`, which `IdempotencyService.check_or_reserve()` gracefully intercepts, returning HTTP `409 Conflict: A concurrent transaction with this Idempotency-Key is currently processing`.
+- **Verifying Test:** `test_idempotency.py::test_duplicate_request_same_key` and `test_security_attacks.py::test_concurrent_duplicate_transfers`.
+- **Remaining Risk:** Storage retention over time. Handled by periodic archival of records older than 30 days.
 
-### 4. Unauthorized Account Access
-- **Attack Scenario:** Attacker (User A) crafts an API call `POST /api/v1/transactions/transfer` with `source_account_id` set to User B's account ID.
-- **Damage Potential:** Complete theft of third-party user funds.
-- **Prevention Mechanism:** Server-side ownership guard: `SELECT id FROM accounts WHERE id = :src_id AND user_id = :current_user.id`. If not owned by caller and caller is not an authorized ADMIN, request is rejected with `403 Forbidden`.
-- **Verifying Test:** `test_unauthorized_account_transfer`.
-- **Remaining Risk:** Compromised user credentials (JWT theft). Mitigated by short-lived JWT access tokens (60 min) and secure HTTPS cookies/headers.
+### 4. Unauthorized Account Access & Privilege Escalation
+- **Attack Scenario:**
+  1. Attacker (User A) crafts an API call `POST /api/v1/transactions/transfer` with `source_account_id` set to User B's account ID.
+  2. Attacker sends `POST /api/v1/auth/register` with payload `{"role": "ADMIN"}` to grant themselves administrator privileges.
+- **Damage Potential:** Unauthorized funds drainage or unauthorized system administrative takeover.
+- **Prevention Mechanism:**
+  1. Server-side ownership guard: `SELECT id FROM accounts WHERE id = :src_id AND user_id = :current_user.id`.
+  2. Public self-registration strictly forces `role = 'ACCOUNT_HOLDER'`. Privileged roles (`ADMIN`, `AUDITOR`) can only be provisioned by existing administrators via the protected `POST /api/v1/admin/users` endpoint.
+- **Verifying Test:** `test_auth_and_roles.py::test_unauthorized_account_transfer_rejected` and `test_security_attacks.py::test_privilege_escalation_registration_blocked`.
+- **Remaining Risk:** Compromised master admin password. Mitigated by strong hashing and MFA in production.
 
 ### 5. Privilege Escalation
 - **Attack Scenario:** An Auditor tries to initiate a transfer or an Account Holder calls an administrative endpoint (`/api/v1/admin/users`).
 - **Damage Potential:** Unauthorized money movement or alteration of account parameters.
-- **Prevention Mechanism:** FastAPI dependency injection `require_role(["ADMIN"])` decodes the cryptographically signed JWT and checks claims on every protected route.
-- **Verifying Test:** `test_auditor_cannot_transfer`.
-- **Remaining Risk:** Role claim stale if user role changes mid-session. Mitigated by re-validating active user status against the database on critical actions.
+- **Prevention Mechanism:** FastAPI dependency injection `require_role(["ADMIN"])` checks the authenticated user's database role on every protected route.
+- **Verifying Test:** `test_auth_and_roles.py::test_auditor_cannot_execute_financial_transactions`.
+- **Remaining Risk:** Stale token if user demoted. Mitigated because `get_current_user` queries the live user record from the database.
 
 ### 6. Ledger Tampering
-- **Attack Scenario:** An insider with compromised database access or an attacker exploiting an application bug executes `UPDATE ledger_entries SET amount = 0` or `DELETE FROM ledger_entries`.
-- **Damage Potential:** Destruction of the audit trail, untraceable theft, regulatory non-compliance.
-- **Prevention Mechanism:** A PostgreSQL trigger `trg_ledger_entries_immutability` executes `BEFORE UPDATE OR DELETE ON ledger_entries` and raises an exception. Furthermore, application database credentials should have only `SELECT` and `INSERT` on `ledger_entries`.
-- **Verifying Test:** `test_direct_entry_update_forbidden`.
-- **Remaining Risk:** Database superuser (`postgres`) can drop the trigger or table. Mitigated by production database privilege separation and managed cloud audit logging.
+- **Attack Scenario:** An insider or SQL injection attempt tries to run `UPDATE ledger_entries SET amount = 0` or `UPDATE ledger_transactions SET total_amount = 0`.
+- **Damage Potential:** Invalidation of financial records, untraceable theft, audit failure.
+- **Prevention Mechanism:** Dual-layer defense:
+  1. Database Triggers: PostgreSQL triggers `trg_ledger_entries_immutability` and `trg_ledger_transactions_immutability` reject `UPDATE` and `DELETE` at the database engine level.
+  2. Application ORM Event Listeners: SQLAlchemy `before_update` and `before_delete` hooks on `LedgerEntry` and `LedgerTransaction` raise `PermissionError` across all database backends.
+- **Verifying Test:** `test_security_attacks.py::test_ledger_immutability`.
+- **Remaining Risk:** Superuser manual intervention. Mitigated by production database role separation.
 
 ### 7. SQL Injection
 - **Attack Scenario:** Malicious SQL fragment injected via transfer descriptions or search fields (`' OR '1'='1`).

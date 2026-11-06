@@ -146,10 +146,15 @@ def upgrade() -> None:
         CREATE TRIGGER trg_ledger_entries_immutability
         BEFORE UPDATE OR DELETE ON ledger_entries
         FOR EACH ROW EXECUTE FUNCTION trg_fn_prevent_ledger_tampering();
+
+        CREATE TRIGGER trg_ledger_transactions_immutability
+        BEFORE UPDATE OR DELETE ON ledger_transactions
+        FOR EACH ROW EXECUTE FUNCTION trg_fn_prevent_ledger_tampering();
     """)
 
 
 def downgrade() -> None:
+    op.execute("DROP TRIGGER IF EXISTS trg_ledger_transactions_immutability ON ledger_transactions;")
     op.execute("DROP TRIGGER IF EXISTS trg_ledger_entries_immutability ON ledger_entries;")
     op.execute("DROP FUNCTION IF EXISTS trg_fn_prevent_ledger_tampering();")
     op.drop_table('audit_logs')

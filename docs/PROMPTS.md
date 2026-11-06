@@ -71,3 +71,30 @@ This log records every significant AI interaction, critical technical evaluation
   - Added tests in `backend/tests/` and container configuration in `backend/Dockerfile` and `docker-compose.yml`.
 
 - **Git Commit Reference:** [`434aa04`](https://github.com/prudhvi/ledgerline/commit/434aa04) – `feat(backend): complete double-entry transfer engine, auth RBAC, idempotency, and tests`
+
+---
+
+### Entry 3: Session 3 – Security Audit, Vulnerability Exploitation & Remediation
+
+- **Date & Time:** 2026-11-06 17:42 IST
+- **Prompt Given to AI:**
+  "Act as an independent financial systems security auditor. Review my entire backend implementation. Try to identify: 1. Double-spending vulnerabilities. 2. Concurrent withdrawal race conditions. 3. Idempotency failures. 4. Authorization bypasses. 5. Ledger modification vulnerabilities. 6. Transaction rollback failures. Do not just tell me the code looks good. Write and execute actual tests to reproduce vulnerabilities. Fix the issues and explain every change. Update THREATS.md and PROMPTS.md with genuine findings. Check whether these are completed or not."
+
+- **What the Independent Security Audit Identified (6 Genuine Vulnerabilities):**
+  1. *Privilege Escalation on Public Registration:* `POST /api/v1/auth/register` accepted a client-supplied `role` field, allowing any visitor to assign themselves `ADMIN` or `AUDITOR` permissions.
+  2. *Split-Commit Idempotency Anomaly:* In `transactions.py`, the financial transfer was committed first (`await db.commit()`), and the idempotency record update was committed second. A server crash or exception between the two would leave money moved while the idempotency key remained permanently stuck in `PENDING`, resulting in client lockout upon retry.
+  3. *Lost Idempotency State on Aborted Transactions:* In-flight `PENDING` idempotency records flushed in the main session were obliterated when `await db.rollback()` was called on error, preventing failed attempts from being recorded.
+  4. *Unhandled DB 500 on Concurrent Idempotency Race:* If two requests with the same idempotency key hit the database simultaneously, both initially found no existing record; the second raised an unhandled `IntegrityError` on the primary key, returning an unexpected 500 error instead of a clean 409 Conflict.
+  5. *Clearing Account Lock Inversion:* `get_or_create_system_clearing_account` acquired a row lock (`with_for_update()`) *before* the caller executed deterministic sorted lock ordering, creating a potential deadlock window with concurrent transfers.
+  6. *Ledger Immutability Gaps & Non-Finite Amounts:* While `ledger_entries` had a database trigger, `ledger_transactions` did not. Furthermore, non-finite amounts (`Infinity`, `NaN`) and sub-cent precision (> 4 decimal places) could bypass naive Pydantic filters.
+
+- **Remediations Implemented & Verified:**
+  1. *Strict Role Assignment:* Public self-registration now forcefully assigns `ACCOUNT_HOLDER`. Added protected `POST /api/v1/admin/users` for administrative provisioning of privileged roles.
+  2. *Single-Commit Atomicity:* Merged financial ledger entry persistence and idempotency status update into a **single atomic transaction commit**.
+  3. *Isolated Failure Logging:* Created `IdempotencyService.record_failure_isolated()` and `AuditService.log_refusal_isolated()` using independent database sessions so failure state persists across rollbacks.
+  4. *Graceful Concurrent Key Interception:* Added `IntegrityError` handling in `IdempotencyService.check_or_reserve()` that catches concurrent key insertion and returns HTTP 409 Conflict.
+  5. *Lock Ordering Harmonization:* Removed premature lock acquisition from the clearing account helper; locks are now acquired strictly once in deterministic ascending order.
+  6. *Dual-Layer Immutability & Financial Amount Validator:* Added SQLAlchemy ORM event listeners on `LedgerEntry` and `LedgerTransaction` alongside PostgreSQL triggers, and created `validate_financial_amount()` restricting values to finite numbers with at most 4 decimal places.
+  7. *Test Suite Expansion:* Added `backend/tests/test_security_attacks.py` containing tests for concurrent withdrawals, duplicate request races, ledger immutability, failure rollback atomicity, privilege escalation prevention, and non-finite amount rejection.
+
+- **Git Commit Reference:** `fix(security): resolve privilege escalation, split-commit anomaly, concurrent idempotency race, and immutability guards` (Pending commit).

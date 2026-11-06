@@ -4,7 +4,9 @@ from typing import Any, Dict, Optional, Tuple
 import uuid
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.database import AsyncSessionLocal
 from app.models.idempotency import IdempotencyRecord
 
 
@@ -32,7 +34,7 @@ class IdempotencyService:
         - If completed: returns cached (status_code, body).
         - If in-flight ('PENDING'): raises 409 Conflict.
         - If payload hash mismatch: raises 409 Conflict.
-        - If new: creates PENDING record and returns None (caller proceeds).
+        - If new: creates PENDING record. Handles concurrent race condition gracefully.
         """
         stmt = select(IdempotencyRecord).where(
             IdempotencyRecord.idempotency_key == idempotency_key
@@ -52,7 +54,7 @@ class IdempotencyService:
             if record.status == "PENDING":
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail="A transaction with this Idempotency-Key is currently processing. Please retry in a few seconds."
+                    detail="A transaction with this Idempotency-Key is currently processing. Please retry shortly."
                 )
             
             # Replay cached result
@@ -65,17 +67,32 @@ class IdempotencyService:
                 detail=record.response_body.get("detail", "Previous transaction failed") if record.response_body else "Transaction failed"
             )
 
-        # Reserve key
-        new_record = IdempotencyRecord(
-            idempotency_key=idempotency_key,
-            user_id=user_id,
-            request_path=request_path,
-            request_hash=payload_hash,
-            status="PENDING"
-        )
-        db.add(new_record)
-        await db.flush()
-        return None
+        # Attempt to insert new PENDING record
+        try:
+            new_record = IdempotencyRecord(
+                idempotency_key=idempotency_key,
+                user_id=user_id,
+                request_path=request_path,
+                request_hash=payload_hash,
+                status="PENDING"
+            )
+            db.add(new_record)
+            await db.flush()
+            return None
+        except IntegrityError:
+            # Race condition: Another concurrent worker just committed or inserted this key
+            await db.rollback()
+            # Re-query
+            res_retry = await db.execute(
+                select(IdempotencyRecord).where(IdempotencyRecord.idempotency_key == idempotency_key)
+            )
+            r_rec = res_retry.scalar_one_or_none()
+            if r_rec and r_rec.status == "COMPLETED":
+                return (r_rec.response_code or 200, r_rec.response_body or {})
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A concurrent transaction with this Idempotency-Key is currently processing."
+            )
 
     @staticmethod
     async def record_success(
@@ -97,20 +114,40 @@ class IdempotencyService:
             await db.flush()
 
     @staticmethod
-    async def record_failure(
-        db: AsyncSession,
+    async def record_failure_isolated(
         idempotency_key: str,
+        user_id: uuid.UUID,
+        request_path: str,
+        payload_hash: str,
         response_code: int,
         error_detail: str
     ) -> None:
-        """Mark idempotency record as FAILED."""
-        stmt = select(IdempotencyRecord).where(
-            IdempotencyRecord.idempotency_key == idempotency_key
-        ).with_for_update()
-        result = await db.execute(stmt)
-        record = result.scalar_one_or_none()
-        if record:
-            record.status = "FAILED"
-            record.response_code = response_code
-            record.response_body = {"detail": error_detail}
-            await db.flush()
+        """
+        Record failure in an isolated database session so that failure status
+        persists even after the main financial transaction rolls back.
+        """
+        async with AsyncSessionLocal() as session:
+            try:
+                stmt = select(IdempotencyRecord).where(
+                    IdempotencyRecord.idempotency_key == idempotency_key
+                ).with_for_update()
+                result = await session.execute(stmt)
+                record = result.scalar_one_or_none()
+                if record:
+                    record.status = "FAILED"
+                    record.response_code = response_code
+                    record.response_body = {"detail": error_detail}
+                else:
+                    new_rec = IdempotencyRecord(
+                        idempotency_key=idempotency_key,
+                        user_id=user_id,
+                        request_path=request_path,
+                        request_hash=payload_hash,
+                        status="FAILED",
+                        response_code=response_code,
+                        response_body={"detail": error_detail}
+                    )
+                    session.add(new_rec)
+                await session.commit()
+            except Exception:
+                await session.rollback()

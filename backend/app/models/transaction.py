@@ -64,3 +64,12 @@ class LedgerTransaction(Base):
 
     # Relationships
     entries = relationship("LedgerEntry", back_populates="transaction", cascade="all, delete-orphan")
+
+
+# Application-level immutability guard
+from sqlalchemy import event
+
+@event.listens_for(LedgerTransaction, "before_update")
+@event.listens_for(LedgerTransaction, "before_delete")
+def enforce_ledger_transaction_immutability(mapper, connection, target):
+    raise PermissionError("Ledger transactions are strictly immutable. UPDATE and DELETE operations are forbidden.")

@@ -1,6 +1,6 @@
 from typing import List, Optional
 import uuid
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -64,13 +64,14 @@ async def deposit_funds(
             detail="Auditors have read-only access and cannot deposit funds."
         )
 
-    # 1. Idempotency Check
+    # 1. Idempotency Check & Reserve
+    request_path = "/api/v1/transactions/deposit"
     payload_hash = IdempotencyService.compute_hash(payload.model_dump())
     cached = await IdempotencyService.check_or_reserve(
         db=db,
         idempotency_key=idempotency_key,
         user_id=current_user.id,
-        request_path="/api/v1/transactions/deposit",
+        request_path=request_path,
         payload_hash=payload_hash
     )
     if cached:
@@ -87,39 +88,40 @@ async def deposit_funds(
             description=payload.description,
             idempotency_key=idempotency_key
         )
-        await db.commit()
-        await db.refresh(tx, attribute_names=["entries"])
-
         formatted = format_tx_response(tx)
-        # 3. Cache Success in Idempotency Store
+
+        # 3. Update Idempotency status in the SAME transaction
         await IdempotencyService.record_success(
             db=db,
             idempotency_key=idempotency_key,
             response_code=status.HTTP_201_CREATED,
             response_body=formatted.model_dump(mode="json")
         )
+        # ATOMIC COMMIT: Double-entry lines + Idempotency completion commit together
         await db.commit()
         return formatted
 
     except HTTPException as he:
         await db.rollback()
-        await IdempotencyService.record_failure(
-            db=db,
+        await IdempotencyService.record_failure_isolated(
             idempotency_key=idempotency_key,
+            user_id=current_user.id,
+            request_path=request_path,
+            payload_hash=payload_hash,
             response_code=he.status_code,
             error_detail=he.detail
         )
-        await db.commit()
         raise he
     except Exception as e:
         await db.rollback()
-        await IdempotencyService.record_failure(
-            db=db,
+        await IdempotencyService.record_failure_isolated(
             idempotency_key=idempotency_key,
+            user_id=current_user.id,
+            request_path=request_path,
+            payload_hash=payload_hash,
             response_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             error_detail="Internal transfer processing error"
         )
-        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Transaction failed. Balance was not modified."
@@ -140,13 +142,14 @@ async def withdraw_funds(
             detail="Auditors have read-only access and cannot withdraw funds."
         )
 
-    # 1. Idempotency Check
+    # 1. Idempotency Check & Reserve
+    request_path = "/api/v1/transactions/withdraw"
     payload_hash = IdempotencyService.compute_hash(payload.model_dump())
     cached = await IdempotencyService.check_or_reserve(
         db=db,
         idempotency_key=idempotency_key,
         user_id=current_user.id,
-        request_path="/api/v1/transactions/withdraw",
+        request_path=request_path,
         payload_hash=payload_hash
     )
     if cached:
@@ -163,39 +166,40 @@ async def withdraw_funds(
             description=payload.description,
             idempotency_key=idempotency_key
         )
-        await db.commit()
-        await db.refresh(tx, attribute_names=["entries"])
-
         formatted = format_tx_response(tx)
-        # 3. Cache Success
+
+        # 3. Update Idempotency status in the SAME transaction
         await IdempotencyService.record_success(
             db=db,
             idempotency_key=idempotency_key,
             response_code=status.HTTP_201_CREATED,
             response_body=formatted.model_dump(mode="json")
         )
+        # ATOMIC COMMIT
         await db.commit()
         return formatted
 
     except HTTPException as he:
         await db.rollback()
-        await IdempotencyService.record_failure(
-            db=db,
+        await IdempotencyService.record_failure_isolated(
             idempotency_key=idempotency_key,
+            user_id=current_user.id,
+            request_path=request_path,
+            payload_hash=payload_hash,
             response_code=he.status_code,
             error_detail=he.detail
         )
-        await db.commit()
         raise he
     except Exception as e:
         await db.rollback()
-        await IdempotencyService.record_failure(
-            db=db,
+        await IdempotencyService.record_failure_isolated(
             idempotency_key=idempotency_key,
+            user_id=current_user.id,
+            request_path=request_path,
+            payload_hash=payload_hash,
             response_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             error_detail="Internal transfer processing error"
         )
-        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Withdrawal failed. Balance was not modified."
@@ -219,13 +223,14 @@ async def transfer_funds(
             detail="Auditors have read-only access and cannot initiate transfers."
         )
 
-    # 1. Idempotency Check
+    # 1. Idempotency Check & Reserve
+    request_path = "/api/v1/transactions/transfer"
     payload_hash = IdempotencyService.compute_hash(payload.model_dump())
     cached = await IdempotencyService.check_or_reserve(
         db=db,
         idempotency_key=idempotency_key,
         user_id=current_user.id,
-        request_path="/api/v1/transactions/transfer",
+        request_path=request_path,
         payload_hash=payload_hash
     )
     if cached:
@@ -243,39 +248,40 @@ async def transfer_funds(
             description=payload.description,
             idempotency_key=idempotency_key
         )
-        await db.commit()
-        await db.refresh(tx, attribute_names=["entries"])
-
         formatted = format_tx_response(tx)
-        # 3. Cache Success
+
+        # 3. Update Idempotency status in the SAME transaction
         await IdempotencyService.record_success(
             db=db,
             idempotency_key=idempotency_key,
             response_code=status.HTTP_201_CREATED,
             response_body=formatted.model_dump(mode="json")
         )
+        # ATOMIC COMMIT
         await db.commit()
         return formatted
 
     except HTTPException as he:
         await db.rollback()
-        await IdempotencyService.record_failure(
-            db=db,
+        await IdempotencyService.record_failure_isolated(
             idempotency_key=idempotency_key,
+            user_id=current_user.id,
+            request_path=request_path,
+            payload_hash=payload_hash,
             response_code=he.status_code,
             error_detail=he.detail
         )
-        await db.commit()
         raise he
     except Exception as e:
         await db.rollback()
-        await IdempotencyService.record_failure(
-            db=db,
+        await IdempotencyService.record_failure_isolated(
             idempotency_key=idempotency_key,
+            user_id=current_user.id,
+            request_path=request_path,
+            payload_hash=payload_hash,
             response_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             error_detail="Internal transfer processing error"
         )
-        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Transfer failed. Balances were not modified."

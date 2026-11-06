@@ -21,9 +21,12 @@ class TransferEngine:
 
     @classmethod
     async def get_or_create_system_clearing_account(cls, db: AsyncSession) -> Account:
-        """Ensure the internal settlement clearing account exists."""
+        """
+        Ensure the internal settlement clearing account exists.
+        Reads without lock so that the caller can acquire locks in strict deterministic ascending order.
+        """
         clearing_id = uuid.UUID(settings.SYSTEM_CLEARING_ACCOUNT_ID)
-        stmt = select(Account).where(Account.id == clearing_id).with_for_update()
+        stmt = select(Account).where(Account.id == clearing_id)
         result = await db.execute(stmt)
         clearing_acc = result.scalar_one_or_none()
 
