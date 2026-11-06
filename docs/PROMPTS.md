@@ -70,4 +70,4 @@ This log records every significant AI interaction, critical technical evaluation
   - Implemented in `backend/app/` across `core/`, `models/`, `schemas/`, `services/`, and `api/v1/`.
   - Added tests in `backend/tests/` and container configuration in `backend/Dockerfile` and `docker-compose.yml`.
 
-- **Git Commit Reference:** `feat(backend): complete double-entry transfer engine, auth RBAC, idempotency, and tests` (Pending commit).
+- **Git Commit Reference:** [`434aa04`](https://github.com/prudhvi/ledgerline/commit/434aa04) – `feat(backend): complete double-entry transfer engine, auth RBAC, idempotency, and tests`
