@@ -97,4 +97,4 @@ This log records every significant AI interaction, critical technical evaluation
   6. *Dual-Layer Immutability & Financial Amount Validator:* Added SQLAlchemy ORM event listeners on `LedgerEntry` and `LedgerTransaction` alongside PostgreSQL triggers, and created `validate_financial_amount()` restricting values to finite numbers with at most 4 decimal places.
   7. *Test Suite Expansion:* Added `backend/tests/test_security_attacks.py` containing tests for concurrent withdrawals, duplicate request races, ledger immutability, failure rollback atomicity, privilege escalation prevention, and non-finite amount rejection.
 
-- **Git Commit Reference:** `fix(security): resolve privilege escalation, split-commit anomaly, concurrent idempotency race, and immutability guards` (Pending commit).
+- **Git Commit Reference:** [`091eeac`](https://github.com/prudhvi/ledgerline/commit/091eeac) – `fix(security): resolve privilege escalation, split-commit anomaly, concurrent idempotency race, and immutability guards`
