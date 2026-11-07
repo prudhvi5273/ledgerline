@@ -135,4 +135,4 @@ This log records every significant AI interaction, critical technical evaluation
   1. *Vite Client Declarations:* Added `frontend/src/vite-env.d.ts` declaring `/// <reference types="vite/client" />`.
   2. *Rollup Code Splitting:* Configured `build.rollupOptions.output.manualChunks` in `vite.config.ts` splitting `vendor`, `charts`, and `icons` into separate optimized chunks.
 
-- **Git Commit Reference:** `feat(frontend): complete React Vite TypeScript fintech UI, state management, and role-based views` (Pending commit).
+- **Git Commit Reference:** [`73e0219`](https://github.com/prudhvi/ledgerline/commit/73e0219) – `feat(frontend): complete React Vite TypeScript fintech UI, state management, and role-based views`
