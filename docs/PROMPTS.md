@@ -98,3 +98,41 @@ This log records every significant AI interaction, critical technical evaluation
   7. *Test Suite Expansion:* Added `backend/tests/test_security_attacks.py` containing tests for concurrent withdrawals, duplicate request races, ledger immutability, failure rollback atomicity, privilege escalation prevention, and non-finite amount rejection.
 
 - **Git Commit Reference:** [`091eeac`](https://github.com/prudhvi/ledgerline/commit/091eeac) – `fix(security): resolve privilege escalation, split-commit anomaly, concurrent idempotency race, and immutability guards`
+
+---
+
+### Entry 4: Day 2 / Session 4 – Full-Stack Frontend Engineering (React + Vite + TypeScript)
+
+- **Date & Time:** 2026-11-07 15:00 IST
+- **Prompt Given to AI:**
+  "I think day 1 complete Aipoyindhi Anukuntuna Epudu day2 start chydam ahh" (Proceeding to Day 2 – Complete Frontend Implementation and API Integration).
+
+- **What the AI Generated:**
+  - Modern, responsive React 18 + Vite + TypeScript Single-Page Application configured with Tailwind CSS, Lucide React icons, and Recharts financial visualizations.
+  - `AuthContext` and Axios client configured with JWT authorization bearer headers, automatic 401 token expiration eviction, and RFC-4122 v4 UUID `Idempotency-Key` generation.
+  - Role-protected route guards (`ProtectedRoute`) enforcing access boundaries for `ADMIN`, `ACCOUNT_HOLDER`, and `AUDITOR`.
+  - All 14 required fintech views:
+    1. **Login:** Fast-fill demo account pills (Alice Client, System Admin, Read-Only Auditor) and authentication form.
+    2. **Register:** Public onboarding strictly assigning `ACCOUNT_HOLDER` role with password policy enforcement.
+    3. **Dashboard:** Portfolio net balance, inflow/outflow metrics, Recharts balance area chart, and recent ledger activity feed.
+    4. **Settlement Accounts:** Interactive account cards, real-time balance queries, and account opening modal.
+    5. **Transfer:** Source/destination selector, balance check, auto `Idempotency-Key` generation with copy/refresh, confirmation modal, and double-entry receipt.
+    6. **Deposit:** External fund inflow credited to user account with matching debit to system clearing account.
+    7. **Withdrawal:** Overdraft-protected withdrawal with live balance validation and warning dialog.
+    8. **Transaction History:** Filter by transaction type, search by reference ID, and expandable double-entry line items.
+    9. **Statements:** Chronological ledger history with debit, credit, and running balance tracking with print/export support.
+    10. **Admin Portal:** User directory, account freeze/unfreeze controls, privileged user provisioning (`POST /admin/users`), and system audit log viewer.
+    11. **Auditor Portal:** Real-time double-entry equilibrium verification ($\sum \text{Debits} == \sum \text{Credits}$, Discrepancy = ₹0.0000), read-only transaction stream, and tamper-evident audit explorer.
+    12. **Profile:** User security credentials overview and cryptographic principles.
+    13. **Unauthorized:** 403 Access Forbidden guard page.
+    14. **NotFound:** 404 Fallback routing.
+
+- **What Was Technically Incomplete or Suboptimal (Identified During Review):**
+  1. *TypeScript ImportMeta Resolution:* Missing `vite/client` type definitions caused `tsc` build error `Property 'env' does not exist on type 'ImportMeta'`.
+  2. *Large Minified Bundle Warning:* Recharts and Lucide icons exceeded 500 kB single-bundle threshold in initial build.
+
+- **How the Issue Was Investigated & Corrected:**
+  1. *Vite Client Declarations:* Added `frontend/src/vite-env.d.ts` declaring `/// <reference types="vite/client" />`.
+  2. *Rollup Code Splitting:* Configured `build.rollupOptions.output.manualChunks` in `vite.config.ts` splitting `vendor`, `charts`, and `icons` into separate optimized chunks.
+
+- **Git Commit Reference:** `feat(frontend): complete React Vite TypeScript fintech UI, state management, and role-based views` (Pending commit).
