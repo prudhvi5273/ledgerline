@@ -68,6 +68,7 @@ Every financial operation satisfies five core mathematical invariants:
 12. **Profile & Security Settings:** User credentials overview and cryptographic principles.
 13. **Unauthorized Access Page (403):** Role-boundary guard page.
 14. **Not Found Page (404):** Route fallback handler.
+15. **AI Financial Assistant (Chatbot):** Interactive AI companion advising users on double-entry equilibrium, concurrency row-locking invariants, idempotency replay tokens, and real-time balance calculations.
 
 ---
 

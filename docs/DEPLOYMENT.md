@@ -15,23 +15,35 @@ graph LR
 
 ---
 
-## 1. Database Deployment (Render PostgreSQL)
+## 1. 1-Click Cloud Deployment (Render Blueprint via `render.yaml`)
+
+The repository includes a production-ready `render.yaml` blueprint. Render will automatically spin up PostgreSQL 16 and the FastAPI Web Service, run Alembic migrations, and wire the database credentials in one click.
 
 1. Log into your [Render Dashboard](https://dashboard.render.com/).
-2. Click **New +** &rarr; **PostgreSQL**.
-3. Configure the database:
-   - **Name:** `ledgerline-db`
-   - **Database:** `ledgerline_db`
-   - **User:** `ledger_user`
-   - **Region:** Singapore / Frankfurt / Oregon (choose closest to your users)
-   - **PostgreSQL Version:** 16
-   - **Instance Type:** Free
-4. Click **Create Database**.
-5. Once provisioned, copy the **Internal Database URL** (for backend running on Render) and **External Database URL** (for local migrations if needed).
+2. Click **New +** &rarr; **Blueprint**.
+3. Select your GitHub repository: `https://github.com/prudhvi5273/ledgerline`.
+4. Render detects `render.yaml` and provisions:
+   - **Database:** `ledgerline-db` (PostgreSQL 16)
+   - **Backend Service:** `ledgerline-backend` (FastAPI + Python 3)
+   - **Pre-deploy Hook:** `alembic upgrade head`
+   - **Health Check:** `/health`
+5. Click **Apply**.
+6. Once deployed, test the live health endpoint:  
+   👉 `https://<your-render-subdomain>.onrender.com/health`  
+   Expected response:
+   ```json
+   {
+     "status": "UP",
+     "app": "LedgerLine",
+     "version": "1.0.0",
+     "database": "HEALTHY"
+   }
+   ```
+   Interactive OpenAPI / Swagger documentation will be live at `https://<your-render-subdomain>.onrender.com/docs`.
 
 ---
 
-## 2. Backend Deployment (Render Web Service)
+## 2. Manual Backend Deployment (Alternative)
 
 1. In Render Dashboard, click **New +** &rarr; **Web Service**.
 2. Connect your GitHub repository: `https://github.com/prudhvi5273/ledgerline`.

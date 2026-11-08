@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/Layout/ProtectedRoute';
 import { Sidebar } from './components/Layout/Sidebar';
+import { AIChatbot } from './components/AI/AIChatbot';
 
 // Pages
 import { Login } from './pages/Login';
@@ -29,6 +30,7 @@ const AppLayout: React.FC = () => (
     <div className="ml-64 flex-1 flex flex-col min-w-0 print:ml-0">
       <Outlet />
     </div>
+    <AIChatbot />
   </div>
 );
 
