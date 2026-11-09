@@ -209,6 +209,6 @@ This log records every significant AI interaction, critical technical evaluation
   2. Created `frontend/Dockerfile` and `nginx.conf`, bundling all 3 tiers into a unified `docker-compose.yml`.
   3. Built `backend/app/verify_system.py` as an executable CLI tool returning standard exit codes for automated CI/CD audits.
 
-- **Git Commit Reference:** [`PENDING_COMMIT_HASH`](https://github.com/prudhvi5273/ledgerline) – `feat(docker): full-stack compose, automated db seed, invariant verifier, and csv export`
+- **Git Commit Reference:** [`030f362`](https://github.com/prudhvi5273/ledgerline/commit/030f362) – `feat(docker): full-stack compose, automated db seed, invariant verifier, and csv export`
 
 
