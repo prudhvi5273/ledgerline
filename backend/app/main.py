@@ -13,6 +13,14 @@ from app.core.database import AsyncSessionLocal, engine
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown events."""
+    # Attempt automatic initial seed if database is unpopulated
+    try:
+        from app.seed import auto_seed_if_empty
+        await auto_seed_if_empty()
+    except Exception as e:
+        import logging
+        logging.getLogger("uvicorn").warning(f"Initial auto-seed check skipped or failed: {e}")
+
     # Yield control to the application
     yield
     # Cleanup engine connections on shutdown

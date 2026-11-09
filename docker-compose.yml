@@ -34,9 +34,22 @@ services:
       DATABASE_URL: postgresql+asyncpg://ledger_user:ledger_password@postgres:5432/ledgerline_db
       SYNC_DATABASE_URL: postgresql+psycopg://ledger_user:ledger_password@postgres:5432/ledgerline_db
       JWT_SECRET_KEY: dev-super-secret-key-at-least-32-chars-long
-      CORS_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173"
+      CORS_ORIGINS: "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173"
     ports:
       - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ledgerline_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000/api/v1
 
 volumes:
   postgres_data:

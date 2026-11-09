@@ -91,20 +91,19 @@ Use these demo credentials to test all three roles.
 - Python `3.11+`
 - PostgreSQL `16+` (or Docker)
 
-### Option A: Running with Docker Compose (Recommended)
+### Option A: Running with Docker Compose (1-Command Full Stack)
 ```bash
 # Clone the repository
 git clone https://github.com/prudhvi5273/ledgerline.git
 cd ledgerline
 
-# Start PostgreSQL and Backend services
-docker-compose up -d
-
-# Start Frontend development server
-cd frontend
-npm install
-npm run dev
+# Start all 3 tiers: PostgreSQL 16, FastAPI Backend, and React Frontend
+docker-compose up --build -d
 ```
+- **React Frontend**: `http://localhost:3000` (or `http://localhost:5173` via Vite dev)
+- **FastAPI OpenAPI Swagger**: `http://localhost:8000/docs`
+- **Health Check**: `http://localhost:8000/health`
+- **Initial Data**: Demo accounts (`Alice`, `Bob`, `Admin`, `Auditor`) are auto-seeded on launch with double-entry balance history!
 
 ### Option B: Manual Local Setup
 
@@ -172,6 +171,41 @@ pytest -v
 | **10** | Failure & Rollback | `tests/test_security_attacks.py` | Simulated crash between debit and credit triggers complete rollback; zero orphaned records. |
 | **11** | Statement Accuracy | `tests/test_statements.py` | Chronological debits, credits, and resulting running balances verified against ledger. |
 | **12** | Deposit/Withdrawal Accounting | `tests/test_money_conservation.py` | External movements balanced against `SYSTEM_CLEARING` account preserving system equilibrium. |
+
+### Mathematical Invariant & Balance Integrity CLI Verification
+
+Run the real-time invariant verifier to validate all accounts, double-entry equilibrium, and money conservation:
+
+```bash
+cd backend
+python -m app.verify_system
+```
+
+Expected Output:
+```
+======================================================================
+ 🛡️  LEDGERLINE FINANCIAL INTEGRITY & MATHEMATICAL INVARIANT AUDIT
+======================================================================
+[1/5] Testing Database Connectivity...
+  ✅ Database connection: OK (PostgreSQL ACID operational)
+
+[2/5] Validating Double-Entry Equilibrium (Σ Debits == Σ Credits)...
+  • Discrepancy  : ₹0.0000
+  ✅ Mathematical Equilibrium: PERFECT (Discrepancy is exactly ₹0.0000)
+
+[3/5] Validating Conservation of Money across all Accounts...
+  • Net System Balance (User Accounts + Clearing): ₹0.0000
+  ✅ Conservation of Money: PERFECT (Total system balance is ₹0.0000)
+
+[4/5] Checking for Negative Balances on User Accounts...
+  ✅ Non-Negative Balance Invariant: PERFECT (0 accounts below zero)
+
+[5/5] Auditing Transaction Header to Ledger Entry Pairing...
+  ✅ All Transactions: BALANCED (100% of journals contain equal debits and credits)
+======================================================================
+ 🌟 AUDIT CERTIFICATE: LEDGERLINE SYSTEM IS MATHEMATICALLY SOUND
+======================================================================
+```
 
 ---
 

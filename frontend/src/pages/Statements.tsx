@@ -56,6 +56,28 @@ export const Statements: React.FC = () => {
     window.print();
   };
 
+  const handleExportCSV = () => {
+    if (!statement || !statement.items.length) return;
+    const headers = ['Posting Date', 'Reference', 'Type', 'Description', 'Entry Type', 'Amount', 'Balance After'];
+    const rows = statement.items.map((item) => [
+      item.created_at,
+      item.reference_id,
+      item.transaction_type,
+      `"${(item.description || '').replace(/"/g, '""')}"`,
+      item.entry_type,
+      item.amount,
+      item.balance_after
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `statement-${statement.account_number}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (isLoading && !statement) {
     return <LoadingSpinner message="Calculating running balances from immutable ledger entries..." />;
   }
@@ -87,9 +109,14 @@ export const Statements: React.FC = () => {
             </select>
           </div>
 
-          <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 w-full sm:w-auto">
-            <Printer size={15} /> Print / Export Statement
-          </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button size="sm" variant="outline" onClick={handleExportCSV} className="gap-1.5 w-full sm:w-auto">
+              <FileSpreadsheet size={15} /> Export CSV
+            </Button>
+            <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 w-full sm:w-auto">
+              <Printer size={15} /> Print / Export PDF
+            </Button>
+          </div>
         </div>
 
         {statement && (
