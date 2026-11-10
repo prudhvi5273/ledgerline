@@ -246,7 +246,7 @@ This log records every significant AI interaction, critical technical evaluation
   2. Implemented `LoginRateLimiterMiddleware` and `SecurityHeadersMiddleware` registered directly in FastAPI middleware pipeline.
   3. Added `prune_expired_records` allowing retention pruning while safely protecting in-flight `PENDING` states.
 
-- **Git Commit Reference:** [`PENDING_COMMIT_HASH`](https://github.com/prudhvi5273/ledgerline) – `feat(ci): ci workflow blueprint, concurrency stress benchmark, security headers, and compliance export`
+- **Git Commit Reference:** [`241684a`](https://github.com/prudhvi5273/ledgerline/commit/241684a) – `feat(ci): ci workflow blueprint, concurrency stress benchmark, security headers, and compliance export`
 
 
 
