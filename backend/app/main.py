@@ -8,6 +8,7 @@ from sqlalchemy import text
 from app.api.v1 import accounts, admin, auditor, auth, statements, transactions
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal, engine
+from app.core.middleware import SecurityHeadersMiddleware, LoginRateLimiterMiddleware
 
 
 @asynccontextmanager
@@ -46,6 +47,12 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"]
 )
+
+# OWASP Security Headers & Tracing
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Authentication Brute Force Protection
+app.add_middleware(LoginRateLimiterMiddleware, max_attempts=10, window_seconds=60)
 
 
 @app.get("/health", tags=["System Health"])

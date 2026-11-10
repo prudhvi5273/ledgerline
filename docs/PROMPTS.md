@@ -211,4 +211,42 @@ This log records every significant AI interaction, critical technical evaluation
 
 - **Git Commit Reference:** [`030f362`](https://github.com/prudhvi5273/ledgerline/commit/030f362) – `feat(docker): full-stack compose, automated db seed, invariant verifier, and csv export`
 
+---
+
+### Entry 7: Day 5 / Session 7 – CI/CD Pipeline, Concurrency Stress Test, Security Hardening & Regulatory Compliance Export
+
+- **Date & Time:** 2026-11-10 18:35 IST
+- **Prompt Given to AI:**
+  "Complete todays task" (Proceeding to Day 5 – GitHub Actions CI/CD Pipeline, Concurrency Stress Benchmark, OWASP Security Headers, Brute-Force Rate Limiting, Idempotency TTL Pruning, and Regulatory Compliance Export).
+
+- **What the AI Generated:**
+  1. **Automated CI/CD Pipeline Blueprint (`ci/ci-workflow.yml`):**
+     - Full enterprise GitHub Actions workflow blueprint testing on push and pull request to `main`.
+     - Spins up a native PostgreSQL 16 service container, runs Alembic migrations, executes `app.seed`, runs the mathematical invariant audit (`app.verify_system`), executes the concurrency stress test (`app.stress_test`), runs the complete Pytest security attack suite, verifies frontend TypeScript typing & Vite build, and checks Docker Compose syntax.
+  2. **OWASP Security Headers & Brute-Force Protection (`backend/app/core/middleware.py`):**
+     - `SecurityHeadersMiddleware`: Injects OWASP defense-in-depth headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection`, `Strict-Transport-Security`, `Permissions-Policy`, `Referrer-Policy`) and unique `X-Request-ID` distributed tracing tokens.
+     - `LoginRateLimiterMiddleware`: In-memory sliding-window rate limiter restricting authentication attempts on `/auth/login` and `/auth/register` to 10 requests per 60 seconds per IP, returning HTTP 429 Too Many Requests with `Retry-After` headers.
+  3. **High-Concurrency Stress & Race Benchmark CLI (`backend/app/stress_test.py`):**
+     - Simulates 50 simultaneous coroutine transfers (bidirectional swap races between Alice and Bob) asserting zero deadlocks and deterministic ascending lock ordering.
+     - Simulates 20 concurrent duplicate requests with identical `Idempotency-Key` headers, asserting exactly 1 financial transfer and clean conflict/cached handling.
+     - Automatically invokes `verify_system` post-benchmark to prove mathematical equilibrium is preserved under load.
+  4. **Regulatory Compliance Export & Idempotency Pruning (`backend/app/api/v1/auditor.py`, `backend/app/services/idempotency_service.py`):**
+     - Implemented `GET /api/v1/auditor/export` generating cryptographically signed JSON or CSV regulatory compliance packages signed with SHA-256 payload checksums.
+     - Added `IdempotencyService.prune_expired_records()` enabling TTL pruning of completed/failed records older than 30 days.
+  5. **Auditor Portal UI Enhancement (`frontend/src/pages/AuditorDashboard.tsx`):**
+     - Added "Export Audit Pack" button in the Auditor Portal downloading the signed JSON compliance package.
+
+- **What Was Technically Incomplete or Suboptimal (Identified During Review):**
+  1. *Lack of Automated CI Verification:* The repository lacked automated GitHub Actions testing, meaning changes were not validated on a clean CI runner.
+  2. *Authentication Endpoint Brute-Force Risk:* Without rate limiting, `/auth/login` was vulnerable to rapid dictionary attacks.
+  3. *Unbounded Idempotency Record Storage:* High-volume ledgers risk table bloat without an explicit TTL pruning policy for completed keys.
+
+- **How the Issue Was Investigated & Corrected:**
+  1. Built `ci/ci-workflow.yml` defining automated multi-job verification for GitHub Actions runners.
+  2. Implemented `LoginRateLimiterMiddleware` and `SecurityHeadersMiddleware` registered directly in FastAPI middleware pipeline.
+  3. Added `prune_expired_records` allowing retention pruning while safely protecting in-flight `PENDING` states.
+
+- **Git Commit Reference:** [`PENDING_COMMIT_HASH`](https://github.com/prudhvi5273/ledgerline) – `feat(ci): ci workflow blueprint, concurrency stress benchmark, security headers, and compliance export`
+
+
 

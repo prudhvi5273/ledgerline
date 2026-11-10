@@ -1,9 +1,10 @@
 import hashlib
 import json
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
 import uuid
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import AsyncSessionLocal
@@ -151,3 +152,18 @@ class IdempotencyService:
                 await session.commit()
             except Exception:
                 await session.rollback()
+
+    @staticmethod
+    async def prune_expired_records(db: AsyncSession, max_age_days: int = 30) -> int:
+        """
+        Prunes completed or failed idempotency records older than max_age_days.
+        Preserves active PENDING records to avoid race conditions.
+        """
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+        stmt = delete(IdempotencyRecord).where(
+            IdempotencyRecord.created_at < cutoff_date,
+            IdempotencyRecord.status.in_(["COMPLETED", "FAILED"])
+        )
+        result = await db.execute(stmt)
+        await db.commit()
+        return result.rowcount or 0

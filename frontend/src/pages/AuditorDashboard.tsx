@@ -15,7 +15,8 @@ import {
   FileCheck2,
   ShieldCheck,
   Search,
-  Lock
+  Lock,
+  Download
 } from 'lucide-react';
 
 export const AuditorDashboard: React.FC = () => {
@@ -51,6 +52,23 @@ export const AuditorDashboard: React.FC = () => {
     ? auditLogs.filter((l) => l.status === 'REFUSED')
     : auditLogs;
 
+  const handleExportCompliance = async () => {
+    try {
+      const res = await apiClient.get('/auditor/export?format=json', { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `compliance_audit_pack_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export compliance pack', err);
+    }
+  };
+
   if (isLoading && !report) {
     return <LoadingSpinner message="Executing global double-entry reconciliation across all accounts..." />;
   }
@@ -71,9 +89,14 @@ export const AuditorDashboard: React.FC = () => {
               Auditor session active: Server-side RBAC dependencies prevent modifying, creating, or deleting accounts, transfers, or entries.
             </span>
           </div>
-          <Button size="sm" variant="outline" onClick={fetchAuditData} className="gap-1.5 text-xs py-1">
-            <RefreshCw size={13} /> Re-Verify Ledger
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={handleExportCompliance} className="gap-1.5 text-xs py-1">
+              <Download size={13} /> Export Audit Pack
+            </Button>
+            <Button size="sm" variant="outline" onClick={fetchAuditData} className="gap-1.5 text-xs py-1">
+              <RefreshCw size={13} /> Re-Verify Ledger
+            </Button>
+          </div>
         </div>
 
         {/* Real-Time Double-Entry Reconciliation Card */}

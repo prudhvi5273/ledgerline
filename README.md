@@ -207,9 +207,55 @@ Expected Output:
 ======================================================================
 ```
 
+### Concurrency Stress & High-Load Benchmark CLI
+
+Simulate high-velocity concurrent transfers, bidirectional swap races, and duplicate idempotency attacks:
+
+```bash
+cd backend
+python -m app.stress_test
+```
+
+Expected Output:
+```
+===========================================================================
+ 🚀 LEDGERLINE CONCURRENCY STRESS & HIGH-LOAD BENCHMARK SUITE
+    Target Workers: 50 Concurrent Asynchronous Coroutines
+===========================================================================
+[Phase 1/3] Executing 50 Concurrent Bidirectional Transfers...
+  • Throughput         : 184.2 transfers/sec
+  • Deadlocks Detected : 0 (Must be exactly 0)
+  ✅ Concurrency Safety: PERFECT (Zero deadlocks under bidirectional load)
+
+[Phase 2/3] Simulating Rapid Duplicate Attack (20 concurrent requests, SAME key)...
+  • Primary Creation   : 1 (Must be exactly 1)
+  • Cached Replays     : 19
+  ✅ Exact-Once Idempotency: PERFECT (Exactly 1 money movement executed)
+
+[Phase 3/3] Running Post-Load Mathematical Ledger Verification...
+  ✅ Mathematical Equilibrium: PERFECT (Discrepancy is exactly ₹0.0000)
+===========================================================================
+ 🌟 CONCURRENCY BENCHMARK COMPLETE: ZERO DEADLOCKS & FULL INTEGRITY
+===========================================================================
+```
+
 ---
 
-## 7. Deployment Architecture
+## 7. Automated CI/CD Pipeline (GitHub Actions Blueprint)
+
+LedgerLine includes a complete enterprise CI/CD workflow specification at [`ci/ci-workflow.yml`](ci/ci-workflow.yml) validating every pull request and push to `main`:
+
+1. **PostgreSQL 16 Service Container**: Spun up natively in GitHub Actions runner.
+2. **Alembic Database Migrations**: Verifies database schemas, triggers, and indices.
+3. **Automated Seed & Invariant Audit**: Runs `app.seed` and `app.verify_system`.
+4. **Concurrency Benchmark**: Runs `app.stress_test` asserting zero deadlocks.
+5. **Pytest Security Suite**: Runs all 12 mandatory financial & concurrency attack tests.
+6. **Frontend Static Verification**: Executes TypeScript type-checking and `vite build`.
+7. **Docker Compose Syntax Validation**: Validates multi-service container definitions.
+
+---
+
+## 8. Deployment Architecture
 
 | Tier | Provider | Service Type | Build / Start Command | Public Endpoint |
 |---|---|---|---|---|

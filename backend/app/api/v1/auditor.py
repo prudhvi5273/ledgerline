@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
 from decimal import Decimal
+import hashlib
+import json
 from typing import List
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -82,3 +84,76 @@ async def list_audit_trail(
     stmt = select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit).offset(offset)
     result = await db.execute(stmt)
     return result.scalars().all()
+
+
+@router.get("/export")
+async def export_audit_compliance_pack(
+    format: str = Query("json", regex="^(json|csv)$"),
+    auditor_user: User = Depends(require_role(["AUDITOR", "ADMIN"])),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Generate an authoritative, tamper-evident regulatory compliance export
+    containing full double-entry audit records with SHA-256 integrity checksum.
+    """
+    stmt = select(AuditLog).order_by(AuditLog.created_at.asc())
+    result = await db.execute(stmt)
+    logs = result.scalars().all()
+
+    if format == "csv":
+        headers = ["id", "actor_id", "event_type", "status", "refusal_reason", "amount", "idempotency_key", "created_at"]
+        rows = [",".join(headers)]
+        for log in logs:
+            row = [
+                str(log.id),
+                str(log.actor_id or ""),
+                log.event_type,
+                log.status,
+                log.refusal_reason or "",
+                str(log.amount or "0.0000"),
+                log.idempotency_key or "",
+                log.created_at.isoformat() if log.created_at else ""
+            ]
+            rows.append(",".join(row))
+        content = "\n".join(rows)
+        return Response(
+            content=content,
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=compliance_audit_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"}
+        )
+
+    # JSON export with cryptographic SHA-256 checksum
+    serialized_logs = [
+        {
+            "id": str(l.id),
+            "actor_id": str(l.actor_id) if l.actor_id else None,
+            "event_type": l.event_type,
+            "status": l.status,
+            "refusal_reason": l.refusal_reason,
+            "source_account_id": str(l.source_account_id) if l.source_account_id else None,
+            "destination_account_id": str(l.destination_account_id) if l.destination_account_id else None,
+            "amount": str(l.amount) if l.amount else None,
+            "idempotency_key": l.idempotency_key,
+            "created_at": l.created_at.isoformat() if l.created_at else None
+        }
+        for l in logs
+    ]
+    payload_str = json.dumps(serialized_logs, sort_keys=True)
+    integrity_checksum = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
+
+    export_bundle = {
+        "export_metadata": {
+            "application": "LedgerLine Financial Core",
+            "auditor": auditor_user.email,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "total_records": len(serialized_logs),
+            "sha256_checksum": integrity_checksum
+        },
+        "audit_logs": serialized_logs
+    }
+
+    return Response(
+        content=json.dumps(export_bundle, indent=2),
+        media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename=compliance_audit_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"}
+    )

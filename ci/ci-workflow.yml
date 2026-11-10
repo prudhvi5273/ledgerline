@@ -1,0 +1,125 @@
+name: LedgerLine CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-tests:
+    name: Backend Pytest & Financial Invariant Audit
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ledger_user
+          POSTGRES_PASSWORD: ledger_password
+          POSTGRES_DB: ledgerline_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Backend Dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Database Migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://ledger_user:ledger_password@localhost:5432/ledgerline_db
+          SYNC_DATABASE_URL: postgresql+psycopg://ledger_user:ledger_password@localhost:5432/ledgerline_db
+          JWT_SECRET_KEY: ci-test-secret-key-at-least-32-chars-long
+        run: |
+          cd backend
+          alembic upgrade head
+
+      - name: Seed Demo Data
+        env:
+          DATABASE_URL: postgresql+asyncpg://ledger_user:ledger_password@localhost:5432/ledgerline_db
+          SYNC_DATABASE_URL: postgresql+psycopg://ledger_user:ledger_password@localhost:5432/ledgerline_db
+          JWT_SECRET_KEY: ci-test-secret-key-at-least-32-chars-long
+        run: |
+          cd backend
+          python -m app.seed
+
+      - name: Execute Mathematical Invariant Audit
+        env:
+          DATABASE_URL: postgresql+asyncpg://ledger_user:ledger_password@localhost:5432/ledgerline_db
+          SYNC_DATABASE_URL: postgresql+psycopg://ledger_user:ledger_password@localhost:5432/ledgerline_db
+          JWT_SECRET_KEY: ci-test-secret-key-at-least-32-chars-long
+        run: |
+          cd backend
+          python -m app.verify_system
+
+      - name: Run Concurrency Stress & Race Benchmark
+        env:
+          DATABASE_URL: postgresql+asyncpg://ledger_user:ledger_password@localhost:5432/ledgerline_db
+          SYNC_DATABASE_URL: postgresql+psycopg://ledger_user:ledger_password@localhost:5432/ledgerline_db
+          JWT_SECRET_KEY: ci-test-secret-key-at-least-32-chars-long
+        run: |
+          cd backend
+          python -m app.stress_test
+
+      - name: Run Pytest Test Suite
+        env:
+          DATABASE_URL: postgresql+asyncpg://ledger_user:ledger_password@localhost:5432/ledgerline_db
+          SYNC_DATABASE_URL: postgresql+psycopg://ledger_user:ledger_password@localhost:5432/ledgerline_db
+          JWT_SECRET_KEY: ci-test-secret-key-at-least-32-chars-long
+        run: |
+          cd backend
+          pytest -v
+
+  frontend-build:
+    name: Frontend TypeScript Verification & Vite Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Verify TypeScript & Build SPA
+        run: |
+          cd frontend
+          npm run build
+
+  docker-validation:
+    name: Docker Compose Syntax & Configuration Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose Config
+        run: |
+          docker compose config
