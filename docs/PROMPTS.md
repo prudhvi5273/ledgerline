@@ -276,7 +276,7 @@ This log records every significant AI interaction, critical technical evaluation
   1. Authored `docs/EVALUATION_GUIDE.md` unifying quickstarts, credential tables, and step-by-step UI evaluation flows.
   2. Built `docs/LedgerLine.postman_collection.json` with pre-configured requests, automated token extraction, and dynamic idempotency headers.
 
-- **Git Commit Reference:** [`PENDING_COMMIT_HASH`](https://github.com/prudhvi5273/ledgerline) – `docs: comprehensive evaluator guide, postman collection, and final submission wrap-up`
+- **Git Commit Reference:** [`b9dcbd9`](https://github.com/prudhvi5273/ledgerline/commit/b9dcbd9) – `docs: comprehensive evaluator guide, postman collection, and final submission wrap-up`
 
 
 
