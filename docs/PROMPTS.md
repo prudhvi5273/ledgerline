@@ -248,5 +248,36 @@ This log records every significant AI interaction, critical technical evaluation
 
 - **Git Commit Reference:** [`241684a`](https://github.com/prudhvi5273/ledgerline/commit/241684a) – `feat(ci): ci workflow blueprint, concurrency stress benchmark, security headers, and compliance export`
 
+---
+
+### Entry 8: Day 6 / Final Session – Evaluator Walkthrough Guide, Postman REST Collection & Submission Readiness
+
+- **Date & Time:** 2026-11-11 18:55 IST
+- **Prompt Given to AI:**
+  "Complete todays task" (Proceeding to Day 6 – Final Challenge Wrap-Up, Evaluator Reviewer Guide, Postman Collection, and Submission Readiness).
+
+- **What the AI Generated:**
+  1. **Comprehensive Evaluator Walkthrough Guide (`docs/EVALUATION_GUIDE.md`):**
+     - Detailed quickstart reference with Option A (1-Command Full Stack `docker-compose up --build -d`), Option B (Local Python/Vite), and Option C (Render/Vercel Cloud).
+     - Credentials cheat sheet for Alice (`client.alice@example.com`), Bob (`client.bob@example.com`), Root Admin (`admin.root@example.com`), and Auditor (`auditor.check@example.com`).
+     - Mandatory criteria matrix explicitly verifying all 12 challenge requirements against specific test suites and commands.
+     - 7 step-by-step walkthrough flows covering authentication, double-entry transfers, overdraft protection, chronological statements with CSV export, independent auditor reconciliation ($\sum \text{Debits} == \sum \text{Credits}$), admin account freeze controls, and AI chatbot guidance.
+  2. **Ready-to-Import Postman REST Collection (`docs/LedgerLine.postman_collection.json`):**
+     - Complete API collection organized across Authentication, Settlement Accounts, Money Movement (with automatic `$guid` `Idempotency-Key` headers), Statements, Auditor Compliance, Admin Controls, and Health checks.
+     - Includes automated test scripts capturing JWT bearer tokens and account IDs into collection variables.
+  3. **Documentation Finalization:**
+     - Updated `README.md` with links to the Evaluation Guide and Postman Collection.
+
+- **What Was Technically Incomplete or Suboptimal (Identified During Review):**
+  1. *Evaluator Onboarding Friction:* Without a dedicated reviewer guide, evaluators needed to read through multiple separate markdown files to understand test sequences, role credentials, and verification commands.
+  2. *API Exploration Tooling:* Testing raw HTTP endpoints without a browser required writing verbose `curl` commands with JWT bearer headers and UUID idempotency keys.
+
+- **How the Issue Was Investigated & Corrected:**
+  1. Authored `docs/EVALUATION_GUIDE.md` unifying quickstarts, credential tables, and step-by-step UI evaluation flows.
+  2. Built `docs/LedgerLine.postman_collection.json` with pre-configured requests, automated token extraction, and dynamic idempotency headers.
+
+- **Git Commit Reference:** [`PENDING_COMMIT_HASH`](https://github.com/prudhvi5273/ledgerline) – `docs: comprehensive evaluator guide, postman collection, and final submission wrap-up`
+
+
 
 

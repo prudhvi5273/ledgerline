@@ -275,9 +275,12 @@ LedgerLine includes a complete enterprise CI/CD workflow specification at [`ci/c
 
 ## 9. Comprehensive Documentation Index
 
+- [**`docs/EVALUATION_GUIDE.md`**](docs/EVALUATION_GUIDE.md) – Comprehensive reviewer & evaluator guide with step-by-step testing flows.
+- [**`docs/LedgerLine.postman_collection.json`**](docs/LedgerLine.postman_collection.json) – Ready-to-import Postman REST collection for all API endpoints.
 - [**`docs/THREATS.md`**](docs/THREATS.md) – In-depth threat model detailing 15 attack scenarios, mitigations, and verifying tests.
 - [**`docs/PROMPTS.md`**](docs/PROMPTS.md) – Dated AI prompt and development audit log with commit references.
 - [**`docs/DATABASE_SCHEMA.md`**](docs/DATABASE_SCHEMA.md) – Complete DDL, constraints, indexes, triggers, and accounting ER diagram.
 - [**`docs/API_DOCUMENTATION.md`**](docs/API_DOCUMENTATION.md) – OpenAPI endpoint specifications, request/response schemas, and error codes.
 - [**`docs/DEPLOYMENT.md`**](docs/DEPLOYMENT.md) – Step-by-step production deployment guide for Render and Vercel.
+- [**`ci/ci-workflow.yml`**](ci/ci-workflow.yml) – GitHub Actions CI/CD pipeline blueprint.
 - [**`.env.example`**](.env.example) – Sanitized configuration template.
