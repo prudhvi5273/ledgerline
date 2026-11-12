@@ -222,27 +222,25 @@ class TransferEngine:
             total_amount=amount,
             currency=source_acc.currency
         )
-        db.add(tx_header)
-        await db.flush()
 
         # 8. Create Double-Entry Pair: 1 Debit (Source), 1 Credit (Destination)
         debit_entry = LedgerEntry(
-            transaction_id=tx_header.id,
+            transaction=tx_header,
             account_id=source_acc.id,
             entry_type="DEBIT",
             amount=amount,
             balance_after=source_acc.balance
         )
         credit_entry = LedgerEntry(
-            transaction_id=tx_header.id,
+            transaction=tx_header,
             account_id=dest_acc.id,
             entry_type="CREDIT",
             amount=amount,
             balance_after=dest_acc.balance
         )
+        db.add(tx_header)
         db.add(debit_entry)
         db.add(credit_entry)
-        tx_header.entries = [debit_entry, credit_entry]
         await db.flush()
 
         # 9. Audit Log
@@ -314,27 +312,25 @@ class TransferEngine:
             total_amount=amount,
             currency=user_acc.currency
         )
-        db.add(tx_header)
-        await db.flush()
 
         # Balanced double-entry pair: DEBIT clearing account, CREDIT user account
         debit_clearing = LedgerEntry(
-            transaction_id=tx_header.id,
+            transaction=tx_header,
             account_id=clearing_acc.id,
             entry_type="DEBIT",
             amount=amount,
             balance_after=clearing_acc.balance
         )
         credit_user = LedgerEntry(
-            transaction_id=tx_header.id,
+            transaction=tx_header,
             account_id=user_acc.id,
             entry_type="CREDIT",
             amount=amount,
             balance_after=user_acc.balance
         )
+        db.add(tx_header)
         db.add(debit_clearing)
         db.add(credit_user)
-        tx_header.entries = [debit_clearing, credit_user]
         await db.flush()
 
         await AuditService.log_event(
@@ -421,27 +417,25 @@ class TransferEngine:
             total_amount=amount,
             currency=user_acc.currency
         )
-        db.add(tx_header)
-        await db.flush()
 
         # Balanced double-entry pair: DEBIT user account, CREDIT clearing account
         debit_user = LedgerEntry(
-            transaction_id=tx_header.id,
+            transaction=tx_header,
             account_id=user_acc.id,
             entry_type="DEBIT",
             amount=amount,
             balance_after=user_acc.balance
         )
         credit_clearing = LedgerEntry(
-            transaction_id=tx_header.id,
+            transaction=tx_header,
             account_id=clearing_acc.id,
             entry_type="CREDIT",
             amount=amount,
             balance_after=clearing_acc.balance
         )
+        db.add(tx_header)
         db.add(debit_user)
         db.add(credit_clearing)
-        tx_header.entries = [debit_user, credit_clearing]
         await db.flush()
 
         await AuditService.log_event(

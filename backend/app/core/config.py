@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
     APP_NAME: str = "LedgerLine"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = "1.0.2"
     API_V1_STR: str = "/api/v1"
 
     # Security
