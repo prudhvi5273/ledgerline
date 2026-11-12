@@ -289,6 +289,7 @@ class TransferEngine:
         accounts_map = {acc.id: acc for acc in result.scalars().all()}
 
         user_acc = accounts_map.get(account_id)
+        clearing_acc = accounts_map.get(clearing_acc.id, clearing_acc)
         if not user_acc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found.")
 
@@ -379,6 +380,7 @@ class TransferEngine:
         accounts_map = {acc.id: acc for acc in result.scalars().all()}
 
         user_acc = accounts_map.get(account_id)
+        clearing_acc = accounts_map.get(clearing_acc.id, clearing_acc)
         if not user_acc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found.")
 

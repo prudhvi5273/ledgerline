@@ -87,15 +87,28 @@ app.include_router(admin.router, prefix=settings.API_V1_STR)
 app.include_router(auditor.router, prefix=settings.API_V1_STR)
 
 
+@app.exception_handler(HTTPException)
+async def custom_http_exception_handler(request: Request, exc: HTTPException):
+    """Pass through HTTPExceptions with their original status code and detail."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=getattr(exc, "headers", None)
+    )
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Sanitize internal server errors to prevent sensitive info leakage."""
-    if settings.DEBUG:
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": str(exc), "type": type(exc).__name__}
-        )
+    """Catch unhandled unexpected exceptions and provide actionable error details."""
+    import logging
+    import traceback
+    trace = traceback.format_exc()
+    logging.getLogger("uvicorn").error(f"Unhandled Exception: {exc}\n{trace}")
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "An internal server error occurred. Please contact system support."}
+        content={
+            "detail": str(exc),
+            "type": type(exc).__name__,
+            "error": "UnhandledServerError"
+        }
     )
