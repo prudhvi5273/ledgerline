@@ -10,7 +10,7 @@ from app.models.audit_log import AuditLog
 from app.models.user import User
 from app.schemas.account import AccountResponse, AccountStatusUpdate
 from app.schemas.audit import AuditLogResponse
-from app.schemas.auth import UserResponse
+from app.schemas.auth import UserRegister, UserResponse
 from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/admin", tags=["Admin Portal"])
