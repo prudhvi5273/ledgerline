@@ -63,7 +63,7 @@ class LedgerTransaction(Base):
     )
 
     # Relationships
-    entries = relationship("LedgerEntry", back_populates="transaction", cascade="all, delete-orphan")
+    entries = relationship("LedgerEntry", back_populates="transaction", cascade="all, delete-orphan", lazy="selectin")
 
 
 # Application-level immutability guard

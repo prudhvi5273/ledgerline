@@ -26,6 +26,12 @@ router = APIRouter(prefix="/transactions", tags=["Money Movement"])
 
 def format_tx_response(tx: LedgerTransaction) -> TransactionResponse:
     """Format transaction and its balanced ledger entries for output."""
+    raw_entries = []
+    try:
+        raw_entries = tx.entries or []
+    except Exception:
+        raw_entries = []
+
     return TransactionResponse(
         id=tx.id,
         reference_id=tx.reference_id,
@@ -45,7 +51,7 @@ def format_tx_response(tx: LedgerTransaction) -> TransactionResponse:
                 balance_after=entry.balance_after,
                 created_at=entry.created_at
             )
-            for entry in tx.entries
+            for entry in raw_entries
         ]
     )
 

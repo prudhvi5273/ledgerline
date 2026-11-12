@@ -242,6 +242,7 @@ class TransferEngine:
         )
         db.add(debit_entry)
         db.add(credit_entry)
+        tx_header.entries = [debit_entry, credit_entry]
         await db.flush()
 
         # 9. Audit Log
@@ -332,6 +333,7 @@ class TransferEngine:
         )
         db.add(debit_clearing)
         db.add(credit_user)
+        tx_header.entries = [debit_clearing, credit_user]
         await db.flush()
 
         await AuditService.log_event(
@@ -437,6 +439,7 @@ class TransferEngine:
         )
         db.add(debit_user)
         db.add(credit_clearing)
+        tx_header.entries = [debit_user, credit_clearing]
         await db.flush()
 
         await AuditService.log_event(
