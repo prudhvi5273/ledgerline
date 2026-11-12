@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { apiClient, generateIdempotencyKey } from '../api/client';
 import { Account, Transaction } from '../types';
 import { Card } from '../components/UI/Card';
@@ -157,18 +157,24 @@ export const Withdraw: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  <select
-                    value={accountId}
-                    onChange={(e) => setAccountId(e.target.value)}
-                    required
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                  >
-                    {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.id} disabled={acc.status !== 'ACTIVE'}>
-                        {acc.account_number} ({acc.currency}) — Balance: {formatCurrency(acc.balance, acc.currency)} {acc.status !== 'ACTIVE' ? `[${acc.status}]` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  {accounts.length === 0 ? (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-xs">
+                      No accounts found. Please go to <Link to="/accounts" className="underline font-bold text-amber-200">My Accounts</Link> to create or view your account.
+                    </div>
+                  ) : (
+                    <select
+                      value={accountId}
+                      onChange={(e) => setAccountId(e.target.value)}
+                      required
+                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    >
+                      {accounts.map((acc) => (
+                        <option key={acc.id} value={acc.id} disabled={acc.status !== 'ACTIVE'}>
+                          {acc.account_number} ({acc.currency}) — Balance: {formatCurrency(acc.balance, acc.currency)} {acc.status !== 'ACTIVE' ? `[${acc.status}]` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div>

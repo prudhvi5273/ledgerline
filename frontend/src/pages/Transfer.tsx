@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { apiClient, generateIdempotencyKey } from '../api/client';
 import { Account, Transaction } from '../types';
 import { Card } from '../components/UI/Card';
@@ -41,12 +41,16 @@ export const Transfer: React.FC = () => {
     const loadAccounts = async () => {
       setIsLoading(true);
       try {
-        const res = await apiClient.get<Account[]>('/accounts');
-        setAccounts(res.data);
-        setAllAccounts(res.data);
-        if (!sourceAccountId && res.data.length > 0) {
-          setSourceAccountId(res.data[0].id);
+        const [myRes, recRes] = await Promise.all([
+          apiClient.get<Account[]>('/accounts'),
+          apiClient.get<Account[]>('/accounts/recipients').catch(() => ({ data: [] as Account[] }))
+        ]);
+        setAccounts(myRes.data);
+        if (!sourceAccountId && myRes.data.length > 0) {
+          setSourceAccountId(myRes.data[0].id);
         }
+        const combined = [...recRes.data, ...myRes.data];
+        setAllAccounts(combined);
       } catch (err: any) {
         setError('Failed to load accounts.');
       } finally {
@@ -213,18 +217,24 @@ export const Transfer: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  <select
-                    value={sourceAccountId}
-                    onChange={(e) => setSourceAccountId(e.target.value)}
-                    required
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                  >
-                    {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.id} disabled={acc.status !== 'ACTIVE'}>
-                        {acc.account_number} ({acc.currency}) — Balance: {formatCurrency(acc.balance, acc.currency)} {acc.status !== 'ACTIVE' ? `[${acc.status}]` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  {accounts.length === 0 ? (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-xs">
+                      No accounts found. Please go to <Link to="/accounts" className="underline font-bold text-amber-200">My Accounts</Link> to create or view your account.
+                    </div>
+                  ) : (
+                    <select
+                      value={sourceAccountId}
+                      onChange={(e) => setSourceAccountId(e.target.value)}
+                      required
+                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    >
+                      {accounts.map((acc) => (
+                        <option key={acc.id} value={acc.id} disabled={acc.status !== 'ACTIVE'}>
+                          {acc.account_number} ({acc.currency}) — Balance: {formatCurrency(acc.balance, acc.currency)} {acc.status !== 'ACTIVE' ? `[${acc.status}]` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 {/* Destination Account */}
@@ -243,7 +253,7 @@ export const Transfer: React.FC = () => {
                       .filter((acc) => acc.id !== sourceAccountId)
                       .map((acc) => (
                         <option key={acc.id} value={acc.id} disabled={acc.status !== 'ACTIVE'}>
-                          {acc.account_number} ({acc.currency}) {acc.status !== 'ACTIVE' ? `[${acc.status}]` : ''}
+                          {acc.account_number} ({acc.currency}) {acc.user_id !== selectedSource?.user_id ? '— Peer Account' : '— My Other Account'}
                         </option>
                       ))}
                   </select>

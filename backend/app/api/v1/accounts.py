@@ -12,6 +12,7 @@ from app.models.account import Account
 from app.models.user import User
 from app.schemas.account import AccountCreate, AccountResponse, BalanceResponse
 from app.services.audit_service import AuditService
+from app.services.transfer_engine import TransferEngine
 
 router = APIRouter(prefix="/accounts", tags=["Accounts"])
 
@@ -81,16 +82,71 @@ async def list_accounts(
     """
     List accounts.
     Account holders view only their own accounts.
+    If an onboarding user has no account yet, automatically provisions a primary checking account.
     Administrators and Auditors can view all system accounts.
     """
     if current_user.role in ["ADMIN", "AUDITOR"]:
         stmt = select(Account).where(Account.account_type != "SYSTEM_CLEARING").order_by(Account.created_at.desc())
+        result = await db.execute(stmt)
+        return result.scalars().all()
     else:
         stmt = select(Account).where(
             Account.user_id == current_user.id,
             Account.account_type != "SYSTEM_CLEARING"
         ).order_by(Account.created_at.desc())
+        result = await db.execute(stmt)
+        accounts = list(result.scalars().all())
 
+        if not accounts:
+            # Auto-provision primary checking account for new user
+            acc_num = generate_unique_account_number()
+            new_acc = Account(
+                user_id=current_user.id,
+                account_number=acc_num,
+                currency="INR",
+                balance=Decimal("0.0000"),
+                status="ACTIVE",
+                account_type="USER_CHECKING"
+            )
+            db.add(new_acc)
+            await db.commit()
+            await db.refresh(new_acc)
+
+            # Auto-fund with 25,000 INR welcome grant so they can immediately test transfers & withdrawals
+            try:
+                await TransferEngine.execute_deposit(
+                    db=db,
+                    actor=current_user,
+                    account_id=new_acc.id,
+                    amount=Decimal("25000.0000"),
+                    description="Welcome onboarding grant"
+                )
+                await db.commit()
+                await db.refresh(new_acc)
+            except Exception:
+                pass
+
+            return [new_acc]
+
+        return accounts
+
+
+@router.get("/recipients", response_model=List[AccountResponse])
+async def list_recipient_accounts(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """List peer destination accounts for transfers (excluding caller's own accounts and system clearing)."""
+    stmt = (
+        select(Account)
+        .where(
+            Account.user_id != current_user.id,
+            Account.account_type != "SYSTEM_CLEARING",
+            Account.status == "ACTIVE"
+        )
+        .order_by(Account.created_at.desc())
+        .limit(20)
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
 
